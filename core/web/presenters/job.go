@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink/core/services/pipeline"
 	"github.com/smartcontractkit/chainlink/core/services/signatures/secp256k1"
 	"github.com/smartcontractkit/chainlink/core/store/models"
+	"gopkg.in/guregu/null.v4"
 )
 
 // JobSpecType defines the the the spec type of the job
@@ -107,7 +108,7 @@ type OffChainReportingSpec struct {
 	P2PPeerID                              *p2pkey.PeerID       `json:"p2pPeerID"`
 	P2PBootstrapPeers                      pq.StringArray       `json:"p2pBootstrapPeers"`
 	IsBootstrapPeer                        bool                 `json:"isBootstrapPeer"`
-	EncryptedOCRKeyBundleID                *models.Sha256Hash   `json:"keyBundleID"`
+	EncryptedOCRKeyBundleID                null.String          `json:"keyBundleID"`
 	TransmitterAddress                     *ethkey.EIP55Address `json:"transmitterAddress"`
 	ObservationTimeout                     models.Interval      `json:"observationTimeout"`
 	BlockchainTimeout                      models.Interval      `json:"blockchainTimeout"`

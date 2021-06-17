@@ -7,7 +7,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink/core/assets"
 	"github.com/smartcontractkit/chainlink/core/internal/cltest"
-	"github.com/smartcontractkit/chainlink/core/services/keystore/keys/ethkey"
 	webpresenters "github.com/smartcontractkit/chainlink/core/web/presenters"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -26,7 +25,7 @@ func TestETHKeysController_Index_Success(t *testing.T) {
 	app, cleanup := cltest.NewApplicationWithConfigAndKey(t, cfg, ethClient)
 	t.Cleanup(cleanup)
 
-	cltest.MustAddRandomKeyToKeystore(t, app.KeyStore.Eth(), true)
+	cltest.MustInsertRandomKey(t, app.Store.DB, app.KeyStore.Eth(), true)
 
 	ethClient.On("BalanceAt", mock.Anything, mock.Anything, mock.Anything).Return(big.NewInt(256), nil).Once()
 	ethClient.On("BalanceAt", mock.Anything, mock.Anything, mock.Anything).Return(big.NewInt(1), nil).Once()
@@ -40,7 +39,7 @@ func TestETHKeysController_Index_Success(t *testing.T) {
 	defer cleanup()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	expectedKeys, err := app.KeyStore.Eth().AllKeys()
+	expectedKeys, err := app.KeyStore.Eth().GetAll()
 	require.NoError(t, err)
 	var actualBalances []webpresenters.ETHKeyResource
 	err = cltest.ParseJSONAPIResponse(t, resp, &actualBalances)
@@ -70,8 +69,6 @@ func TestETHKeysController_Index_NotDev(t *testing.T) {
 	app, cleanup := cltest.NewApplicationWithConfigAndKey(t, cfg, ethClient)
 	t.Cleanup(cleanup)
 
-	cltest.MustAddRandomKeyToKeystore(t, app.KeyStore.Eth(), true)
-
 	ethClient.On("BalanceAt", mock.Anything, mock.Anything, mock.Anything).Return(big.NewInt(256), nil).Once()
 	ethClient.On("GetLINKBalance", mock.Anything, mock.Anything).Return(assets.NewLink(256), nil).Once()
 
@@ -82,7 +79,7 @@ func TestETHKeysController_Index_NotDev(t *testing.T) {
 	defer cleanup()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	expectedKeys, err := app.KeyStore.Eth().AllKeys()
+	expectedKeys, err := app.KeyStore.Eth().GetAll()
 	require.NoError(t, err)
 	var actualBalances []webpresenters.ETHKeyResource
 	err = cltest.ParseJSONAPIResponse(t, resp, &actualBalances)
@@ -103,16 +100,13 @@ func TestETHKeysController_Index_NoAccounts(t *testing.T) {
 	t.Cleanup(cleanup)
 	require.NoError(t, app.Start())
 
-	err := app.Store.ORM.DB.Delete(&ethkey.Key{}, "id = ?", app.Key.ID).Error
-	require.NoError(t, err)
-
 	client := app.NewHTTPClient()
 
 	resp, cleanup := client.Get("/v2/keys/eth")
 	defer cleanup()
 
 	balances := []webpresenters.ETHKeyResource{}
-	err = cltest.ParseJSONAPIResponse(t, resp, &balances)
+	err := cltest.ParseJSONAPIResponse(t, resp, &balances)
 	assert.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)

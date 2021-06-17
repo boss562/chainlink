@@ -32,15 +32,13 @@ func TestJob(t *testing.T) {
 
 	// Used in OCR tests
 	var (
-		peerIDStr      = "12D3KooWApUJaQB2saFjyEUfq6BmysnsSnhLnY5CF9tURYVKgoXK"
-		ocrKeyBundleID = "7f993fb701b3410b1f6e8d4d93a7462754d24609b9b31a4fe64a0cb475a4d934"
+		peerIDStr      = "12D3KooW9pNAk8aiBuGVQtWRdbkLmo5qVL3e2h5UxbN2Nz9ttwiw"
+		ocrKeyBundleID = "f126a0bd09f6a9e2d8cd4d2fcb623cb094f6e487c8a22dfb061911d64b770026"
 	)
 	p2pPeerID, err := peer.Decode(peerIDStr)
 	require.NoError(t, err)
 	peerID := p2pkey.PeerID(p2pPeerID)
 	transmitterAddress, err := ethkey.NewEIP55Address("0x27548a32b9aD5D64c5945EaE9Da5337bc3169D15")
-	require.NoError(t, err)
-	ocrKeyBundleIDSha256, err := models.Sha256HashFromHex(ocrKeyBundleID)
 	require.NoError(t, err)
 
 	// Used in keeper test
@@ -179,7 +177,7 @@ func TestJob(t *testing.T) {
 					P2PPeerID:                              &peerID,
 					P2PBootstrapPeers:                      pq.StringArray{"/dns4/chain.link/tcp/1234/p2p/xxx"},
 					IsBootstrapPeer:                        true,
-					EncryptedOCRKeyBundleID:                &ocrKeyBundleIDSha256,
+					EncryptedOCRKeyBundleID:                null.NewString(ocrKeyBundleID, true),
 					TransmitterAddress:                     &transmitterAddress,
 					ObservationTimeout:                     models.Interval(1 * time.Minute),
 					BlockchainTimeout:                      models.Interval(1 * time.Minute),

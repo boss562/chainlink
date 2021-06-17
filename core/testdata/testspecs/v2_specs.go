@@ -132,16 +132,16 @@ decode_log   [type=ethabidecodelog
               abi="RandomnessRequest(bytes32 keyHash,uint256 seed,bytes32 indexed jobID,address sender,uint256 fee,bytes32 requestID)"
               data="$(jobRun.logData)"
               topics="$(jobRun.logTopics)"]
-vrf          [type=vrf 
-			  publicKey="$(jobSpec.publicKey)" 
-              requestBlockHash="$(jobRun.logBlockHash)" 
+vrf          [type=vrf
+			  publicKey="$(jobSpec.publicKey)"
+              requestBlockHash="$(jobRun.logBlockHash)"
               requestBlockNumber="$(jobRun.logBlockNumber)"
               topics="$(jobRun.logTopics)"]
 encode_tx    [type=ethabiencode
               abi="fulfillRandomnessRequest(bytes proof)"
               data="{\\"proof\\": $(vrf)}"]
-submit_tx  [type=ethtx to="%s" 
-			data="$(encode_tx)" 
+submit_tx  [type=ethtx to="%s"
+			data="$(encode_tx)"
 			minConfirmations="0"
             txMeta="{\\"requestTxHash\\": $(jobRun.logTxHash),\\"requestID\\": $(decode_log.requestID),\\"jobID\\": $(jobSpec.databaseID)}"]
 decode_log->vrf->encode_tx->submit_tx
@@ -181,7 +181,7 @@ type = "vrf"
 schemaVersion = 1
 name = "%s"
 coordinatorAddress = "%s"
-confirmations = %d 
+confirmations = %d
 publicKey = "%s"
 observationSource = """
 %s
@@ -230,13 +230,13 @@ type               = "offchainreporting"
 schemaVersion      = 1
 name               = "%s"
 contractAddress    = "0x613a38AC1659769640aaE063C651F48E0250454C"
-p2pPeerID          = "12D3KooWApUJaQB2saFjyEUfq6BmysnsSnhLnY5CF9tURYVKgoXK"
+p2pPeerID          = "12D3KooW9pNAk8aiBuGVQtWRdbkLmo5qVL3e2h5UxbN2Nz9ttwiw"
 externalJobID     =  "%s"
 p2pBootstrapPeers  = [
     "/dns4/chain.link/tcp/1234/p2p/16Uiu2HAm58SP7UL8zsnpeuwHfytLocaqgnyaYKP8wu7qRdrixLju",
 ]
 isBootstrapPeer    = false
-keyBundleID        = "7f993fb701b3410b1f6e8d4d93a7462754d24609b9b31a4fe64a0cb475a4d934"
+keyBundleID        = "f126a0bd09f6a9e2d8cd4d2fcb623cb094f6e487c8a22dfb061911d64b770026"
 monitoringEndpoint = "chain.link:4321"
 transmitterAddress = "%s"
 observationTimeout = "10s"
