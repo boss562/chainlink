@@ -30,8 +30,8 @@ import (
 	"github.com/smartcontractkit/chainlink/core/store/dialects"
 	"github.com/smartcontractkit/chainlink/core/store/models"
 	"github.com/smartcontractkit/chainlink/core/utils"
+	ocrcommontypes "github.com/smartcontractkit/libocr/commontypes"
 	ocrnetworking "github.com/smartcontractkit/libocr/networking"
-	ocrtypes "github.com/smartcontractkit/libocr/offchainreporting/types"
 	"github.com/spf13/viper"
 	"go.uber.org/zap/zapcore"
 	"gorm.io/gorm"
@@ -90,6 +90,7 @@ type GeneralConfig interface {
 	FeatureExternalInitiators() bool
 	FeatureFluxMonitorV2() bool
 	FeatureOffchainReporting() bool
+	FeatureOffchainReporting2() bool
 	FeatureWebhookV2() bool
 	GetAdvisoryLockIDConfiguredOrDefault() int64
 	GetDatabaseDialectConfiguredOrDefault() dialects.DialectName
@@ -146,7 +147,7 @@ type GeneralConfig interface {
 	P2PPeerstoreWriteInterval() time.Duration
 	P2PV2AnnounceAddresses() []string
 	P2PV2AnnounceAddressesRaw() []string
-	P2PV2Bootstrappers() (locators []ocrtypes.BootstrapperLocator)
+	P2PV2Bootstrappers() (locators []ocrcommontypes.BootstrapperLocator)
 	P2PV2BootstrappersRaw() []string
 	P2PV2DeltaDial() models.Duration
 	P2PV2DeltaReconcile() models.Duration
@@ -177,6 +178,36 @@ type GeneralConfig interface {
 	UnAuthenticatedRateLimit() int64
 	UnAuthenticatedRateLimitPeriod() models.Duration
 	Validate() error
+
+	OCR2BlockchainTimeout() time.Duration
+	OCR2ContractPollInterval() time.Duration
+	OCR2ContractSubscribeInterval() time.Duration
+	OCR2ContractTransmitterTransmitTimeout() time.Duration
+	OCR2DHTLookupInterval() int
+	OCR2DatabaseTimeout() time.Duration
+	OCR2DefaultTransactionQueueDepth() uint32
+	OCR2IncomingMessageBufferSize() int
+	OCR2KeyBundleID() (models.Sha256Hash, error)
+	OCR2NewStreamTimeout() time.Duration
+	OCR2ObservationGracePeriod() time.Duration
+	OCR2ObservationTimeout() time.Duration
+	OCR2OutgoingMessageBufferSize() int
+	OCR2P2PAnnounceIP() net.IP
+	OCR2P2PAnnouncePort() uint16
+	OCR2P2PBootstrapPeers() ([]string, error)
+	OCR2P2PDHTAnnouncementCounterUserPrefix() uint32
+	OCR2P2PListenIP() net.IP
+	OCR2P2PListenPort() uint16
+	OCR2P2PNetworkingStack() ocrnetworking.NetworkingStack
+	OCR2P2PPeerID() (p2pkey.PeerID, error)
+	OCR2P2PPeerstoreWriteInterval() time.Duration
+	OCR2P2PV2AnnounceAddresses() []string
+	OCR2P2PV2Bootstrappers() []ocrcommontypes.BootstrapperLocator
+	OCR2P2PV2DeltaDial() time.Duration
+	OCR2P2PV2DeltaReconcile() time.Duration
+	OCR2P2PV2ListenAddresses() []string
+	OCR2TraceLogging() bool
+	OCR2TransmitterAddress() (ethkey.EIP55Address, error)
 }
 
 // generalConfig holds parameters used by the application which can be overridden by
@@ -185,17 +216,17 @@ type GeneralConfig interface {
 // If you add an entry here which does not contain sensitive information, you
 // should also update presenters.ConfigWhitelist and cmd_test.TestClient_RunNodeShowsEnv.
 type generalConfig struct {
-	viper            *viper.Viper
-	secretGenerator  SecretGenerator
-	ORM              *ORM
-	randomP2PPort    uint16
-	randomP2PPortMtx *sync.RWMutex
-	dialect          dialects.DialectName
-	advisoryLockID   int64
-	p2ppeerIDmtx     sync.Mutex
+	viper                *viper.Viper
+	secretGenerator      SecretGenerator
+	ORM                  *ORM
+	randomOCR2P2PPort    uint16
+	randomOCR2P2PPortMtx *sync.RWMutex
+	randomP2PPort        uint16
+	randomP2PPortMtx     *sync.RWMutex
+	dialect              dialects.DialectName
+	advisoryLockID       int64
+	p2ppeerIDmtx         sync.Mutex
 }
-
-const defaultPostgresAdvisoryLockID int64 = 1027321974924625846
 
 // NewGeneralConfig returns the config with the environment variables set to their
 // respective fields, or their defaults if environment variables are not set.
@@ -225,8 +256,9 @@ func newGeneralConfigWithViper(v *viper.Viper) *generalConfig {
 	_ = v.BindEnv("MINIMUM_CONTRACT_PAYMENT")
 
 	config := &generalConfig{
-		viper:            v,
-		randomP2PPortMtx: new(sync.RWMutex),
+		viper:                v,
+		randomP2PPortMtx:     new(sync.RWMutex),
+		randomOCR2P2PPortMtx: new(sync.RWMutex),
 	}
 
 	if err := utils.EnsureDirAndMaxPerms(config.RootDir(), os.FileMode(0700)); err != nil {
@@ -482,6 +514,11 @@ func (c *generalConfig) FeatureFluxMonitorV2() bool {
 // FeatureOffchainReporting enables the Flux Monitor job type.
 func (c *generalConfig) FeatureOffchainReporting() bool {
 	return c.viper.GetBool(EnvVarName("FeatureOffchainReporting"))
+}
+
+// FeatureOffchainReporting2 enables the Flux Monitor job type.
+func (c *generalConfig) FeatureOffchainReporting2() bool {
+	return c.viper.GetBool(EnvVarName("FeatureOffchainReporting2"))
 }
 
 // FeatureWebhookV2 enables the Webhook v2 job type
@@ -1011,10 +1048,10 @@ func (c *generalConfig) P2PV2AnnounceAddressesRaw() []string {
 
 // P2PV2Bootstrappers returns the default bootstrapper peers for libocr's v2
 // networking stack
-func (c *generalConfig) P2PV2Bootstrappers() (locators []ocrtypes.BootstrapperLocator) {
+func (c *generalConfig) P2PV2Bootstrappers() (locators []ocrcommontypes.BootstrapperLocator) {
 	bootstrappers := c.P2PV2BootstrappersRaw()
 	for _, s := range bootstrappers {
-		var locator ocrtypes.BootstrapperLocator
+		var locator ocrcommontypes.BootstrapperLocator
 		err := locator.UnmarshalText([]byte(s))
 		if err != nil {
 			logger.Fatalf("invalid format for bootstrapper '%s', got error: %s", s, err)

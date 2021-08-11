@@ -50,13 +50,6 @@ func newEVMConfigWithChainID(id string) *evmConfig {
 	return config.(*evmConfig)
 }
 
-func newEVMConfig(f func(c *generalConfig)) *evmConfig {
-	gcfg := NewGeneralConfig()
-	f(gcfg.(*generalConfig))
-	config := NewEVMConfig(gcfg).(*evmConfig)
-	return config
-}
-
 func TestEVMConfig_ChainSpecificConfig(t *testing.T) {
 	t.Parallel()
 

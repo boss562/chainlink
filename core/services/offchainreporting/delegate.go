@@ -22,10 +22,12 @@ import (
 	"github.com/smartcontractkit/chainlink/core/services/keystore/keys/ethkey"
 	"github.com/smartcontractkit/chainlink/core/services/keystore/keys/p2pkey"
 	"github.com/smartcontractkit/chainlink/core/services/log"
+	"github.com/smartcontractkit/chainlink/core/services/ocrcommon"
 	"github.com/smartcontractkit/chainlink/core/services/pipeline"
 	"github.com/smartcontractkit/chainlink/core/services/postgres"
 	"github.com/smartcontractkit/chainlink/core/services/telemetry"
 	"github.com/smartcontractkit/chainlink/core/store/models"
+	ocrcommontypes "github.com/smartcontractkit/libocr/commontypes"
 	"github.com/smartcontractkit/libocr/gethwrappers/offchainaggregator"
 	ocr "github.com/smartcontractkit/libocr/offchainreporting"
 	ocrtypes "github.com/smartcontractkit/libocr/offchainreporting/types"
@@ -51,12 +53,12 @@ type DelegateConfig interface {
 	OCRTransmitterAddress(*ethkey.EIP55Address) (ethkey.EIP55Address, error)
 	P2PBootstrapPeers([]string) ([]string, error)
 	P2PPeerID(*p2pkey.PeerID) (p2pkey.PeerID, error)
-	P2PV2Bootstrappers() []ocrtypes.BootstrapperLocator
+	P2PV2Bootstrappers() []ocrcommontypes.BootstrapperLocator
 }
 
 type Delegate struct {
 	db                    *gorm.DB
-	txm                   txManager
+	txm                   ocrcommon.TxManager
 	jobORM                job.ORM
 	config                DelegateConfig
 	keyStore              *keystore.OCR
@@ -73,7 +75,7 @@ var _ job.Delegate = (*Delegate)(nil)
 
 func NewDelegate(
 	db *gorm.DB,
-	txm txManager,
+	txm ocrcommon.TxManager,
 	jobORM job.ORM,
 	config DelegateConfig,
 	keyStore *keystore.OCR,
@@ -173,7 +175,7 @@ func (d Delegate) ServicesForSpec(jobSpec job.Job) (services []job.Service, err 
 		"jobName", jobSpec.Name.ValueOrZero(),
 		"jobID", jobSpec.ID,
 	)
-	ocrLogger := NewLogger(loggerWith, d.config.OCRTraceLogging(), func(msg string) {
+	ocrLogger := ocrcommon.NewLogger(loggerWith, d.config.OCRTraceLogging(), func(msg string) {
 		d.jobORM.RecordError(context.Background(), jobSpec.ID, msg)
 	})
 
@@ -199,14 +201,16 @@ func (d Delegate) ServicesForSpec(jobSpec job.Job) (services []job.Service, err 
 	logger.Info(fmt.Sprintf("OCR job using local config %+v", lc))
 
 	if concreteSpec.IsBootstrapPeer {
-		bootstrapper, err := ocr.NewBootstrapNode(ocr.BootstrapNodeArgs{
+		bootstrapNodeArgs := ocr.BootstrapNodeArgs{
 			BootstrapperFactory:   peerWrapper.Peer,
 			V1Bootstrappers:       bootstrapPeers,
 			ContractConfigTracker: tracker,
 			Database:              ocrdb,
 			LocalConfig:           lc,
 			Logger:                ocrLogger,
-		})
+		}
+		logger.Debugw("Launching new bootstrap node", "args", bootstrapNodeArgs)
+		bootstrapper, err := ocr.NewBootstrapNode(bootstrapNodeArgs)
 		if err != nil {
 			return nil, errors.Wrap(err, "error calling NewBootstrapNode")
 		}
@@ -239,7 +243,7 @@ func (d Delegate) ServicesForSpec(jobSpec job.Job) (services []job.Service, err 
 			concreteSpec.ContractAddress.Address(),
 			contractCaller,
 			contractABI,
-			NewTransmitter(d.txm, d.db, ta.Address(), d.config.EvmGasLimitDefault(), strategy),
+			ocrcommon.NewTransmitter(d.txm, d.db, ta.Address(), d.config.EvmGasLimitDefault(), strategy),
 			d.logBroadcaster,
 			tracker,
 			d.config.ChainID(),
@@ -275,7 +279,7 @@ func (d Delegate) ServicesForSpec(jobSpec job.Job) (services []job.Service, err 
 		// RunResultSaver needs to be started first so its available
 		// to read db writes. It is stopped last after the Oracle is shut down
 		// so no further runs are enqueued and we can drain the queue.
-		services = append([]job.Service{NewResultRunSaver(
+		services = append([]job.Service{ocrcommon.NewResultRunSaver(
 			postgres.UnwrapGormDB(d.db),
 			runResults,
 			d.pipelineRunner,

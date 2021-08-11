@@ -46,6 +46,7 @@ type (
 		MinimumContractPayment                     *assets.Link
 		NonceAutoSync                              bool
 		OCRContractConfirmations                   uint16
+		OCR2ContractConfirmations                  uint16
 		RPCDefaultBatchSize                        uint32
 		set                                        bool
 	}
@@ -102,6 +103,7 @@ func setConfigs() {
 		MinimumContractPayment:                     assets.NewLink(100000000000000), // 0.0001 LINK
 		NonceAutoSync:                              true,
 		OCRContractConfirmations:                   4,
+		OCR2ContractConfirmations:                  4,
 		RPCDefaultBatchSize:                        100,
 		set:                                        true,
 	}
@@ -189,6 +191,7 @@ func setConfigs() {
 	arbitrumMainnet.BlockHistoryEstimatorBlockHistorySize = 0 // Force an error if someone set GAS_UPDATER_ENABLED=true by accident; we never want to run the block history estimator on arbitrum
 	arbitrumMainnet.LinkContractAddress = "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4"
 	arbitrumMainnet.OCRContractConfirmations = 1
+	arbitrumMainnet.OCR2ContractConfirmations = 1
 	arbitrumRinkeby := arbitrumMainnet
 	arbitrumRinkeby.LinkContractAddress = "0x615fBe6372676474d9e6933d310469c9b68e9726"
 
@@ -207,6 +210,7 @@ func setConfigs() {
 	optimismMainnet.MinIncomingConfirmations = 1
 	optimismMainnet.MinRequiredOutgoingConfirmations = 0
 	optimismMainnet.OCRContractConfirmations = 1
+	optimismMainnet.OCR2ContractConfirmations = 1
 	optimismKovan := optimismMainnet
 	optimismKovan.LinkContractAddress = "0x4911b761993b9c8c0d14Ba2d86902AF6B0074F5B"
 	optimismKovan.BlockEmissionIdleWarningThreshold = 30 * time.Minute
@@ -242,6 +246,7 @@ func setConfigs() {
 	avalancheMainnet.MinIncomingConfirmations = 1
 	avalancheMainnet.MinRequiredOutgoingConfirmations = 1
 	avalancheMainnet.OCRContractConfirmations = 1
+	avalancheMainnet.OCR2ContractConfirmations = 1
 
 	avalancheFuji := avalancheMainnet
 	avalancheFuji.LinkContractAddress = "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846"

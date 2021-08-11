@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink/core/chains"
+	"github.com/smartcontractkit/chainlink/core/services/ocrcommon"
 	"github.com/smartcontractkit/chainlink/core/services/postgres"
 
 	"gorm.io/gorm"
@@ -62,7 +63,7 @@ type (
 		logger           logger.Logger
 		db               OCRContractTrackerDB
 		gdb              *gorm.DB
-		blockTranslator  BlockTranslator
+		blockTranslator  ocrcommon.BlockTranslator
 		chain            *chains.Chain
 
 		// HeadBroadcaster
@@ -120,7 +121,7 @@ func NewOCRContractTracker(
 		logger,
 		db,
 		gdb,
-		NewBlockTranslator(chain, ethClient),
+		ocrcommon.NewBlockTranslator(chain, ethClient),
 		chain,
 		headBroadcaster,
 		nil,
