@@ -3,12 +3,15 @@ package offchainreporting
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink/core/internal/gethwrappers/generated/flags_wrapper"
+	"github.com/smartcontractkit/chainlink/core/utils"
 	"gorm.io/gorm"
 
 	"github.com/smartcontractkit/chainlink/core/chains"
@@ -52,6 +55,7 @@ type DelegateConfig interface {
 	P2PBootstrapPeers([]string) ([]string, error)
 	P2PPeerID(*p2pkey.PeerID) (p2pkey.PeerID, error)
 	P2PV2Bootstrappers() []ocrtypes.BootstrapperLocator
+	FlagsContractAddress() string
 }
 
 type Delegate struct {
@@ -248,6 +252,13 @@ func (d Delegate) ServicesForSpec(jobSpec job.Job) (services []job.Service, err 
 		runResults := make(chan pipeline.Run, d.config.JobPipelineResultWriteQueueDepth())
 		jobSpec.PipelineSpec.JobName = jobSpec.Name.ValueOrZero()
 		jobSpec.PipelineSpec.JobID = jobSpec.ID
+
+		var configOverrider ocrtypes.ConfigOverrider
+		flagsContractAddress := d.config.FlagsContractAddress()
+		if flagsContractAddress != "" {
+			configOverrider = ConfigOverriderImpl{flagsContractAddress, concreteSpec.ContractAddress}
+		}
+
 		oracle, err := ocr.NewOracle(ocr.OracleArgs{
 			Database: ocrdb,
 			Datasource: &dataSource{
@@ -266,6 +277,7 @@ func (d Delegate) ServicesForSpec(jobSpec job.Job) (services []job.Service, err 
 			V1Bootstrappers:              bootstrapPeers,
 			V2Bootstrappers:              v2BootstrapPeers,
 			MonitoringEndpoint:           d.monitoringEndpointGen.GenMonitoringEndpoint(concreteSpec.ContractAddress.Address()),
+			ConfigOverrider:              configOverrider,
 		})
 		if err != nil {
 			return nil, errors.Wrap(err, "error calling NewOracle")
@@ -285,4 +297,21 @@ func (d Delegate) ServicesForSpec(jobSpec job.Job) (services []job.Service, err 
 	}
 
 	return services, nil
+}
+
+type ConfigOverriderImpl struct {
+	flagsContractAddress string
+	contractAddress      ethkey.EIP55Address
+}
+
+func (c ConfigOverriderImpl) ConfigOverride() *ocrtypes.ConfigOverride {
+	//TODO: get log
+	return c.OverrideFromLog()
+}
+
+func (c ConfigOverriderImpl) OverrideFromLog(log *flags_wrapper.FlagsFlagRaised) *ocrtypes.ConfigOverride {
+	if log.Subject == utils.ZeroAddress || log.Subject == c.contractAddress.Address() {
+		return &ocrtypes.ConfigOverride{AlphaPPB: math.MaxUint64, DeltaC: 23*time.Hour + time.Duration(c.contractAddress.Big().Int64()%3600)*time.Second}
+	}
+	return nil
 }
