@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### New env vars
 
-`CLOBBER_NODES_FROM_ENV` - Defaulting to true, this env var when set will autocreate database rows for chain and nodes. It will upsert a new chain using the DefaultChainID and upsert nodes corresponding to the given ETH_URL and ETH_SECONDARY_URLS. It is recommended, after the initial population, to set this env var to false and thereafter to use the CLI commands or API to manage chains/nodes.
+`CLOBBER_NODES_FROM_ENV` - Defaulting to true, this env var when set will autocreate database rows for chain and nodes. It will upsert a new chain using ETH_CHAIN_ID and upsert nodes corresponding to the given ETH_URL/ETH_HTTP_URL/ETH_SECONDARY_URLS. It is recommended, after the initial population, to set this env var to false and thereafter to use the CLI commands or API to manage chains/nodes.
 
 `EVM_DISABLED` - If set to true, will prevent any chains from being loaded at all, and any jobs that interact with the EVM cannot be created/loaded/run. Distinct from `ETHEREUM_DISABLED` which continue to work as before and will load chains, but will not connect to any nodes and still allows you to create jobs. This is a new recommended setting (replacing `ETH_DISABLED`) for jobs that don't need the EVM at all, e.g. Cron jobs on DYDX.
 

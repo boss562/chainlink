@@ -73,7 +73,6 @@ func TestHeadTracker_Save_InsertsAndTrimsTable(t *testing.T) {
 
 	db := pgtest.NewGormDB(t)
 	config := newCfg(t)
-	// config.Overrides.GlobalEvmHeadTrackerHistoryDepth = null.IntFrom(100)
 
 	ethClient := cltest.NewEthClientMockWithDefaultChain(t)
 	orm := headtracker.NewORM(db, cltest.FixtureChainID)

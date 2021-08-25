@@ -13,7 +13,6 @@ import (
 
 //go:generate mockery --name ORM --output ./mocks/ --case=underscore --structname ORM --filename orm.go
 
-// TODO: Add evm_chain_id scoping here
 type ORM interface {
 	FindConsumedLogs(fromBlockNum int64, toBlockNum int64) ([]LogBroadcast, error)
 	WasBroadcastConsumed(tx *gorm.DB, blockHash common.Hash, logIndex uint, jobID int32) (bool, error)
